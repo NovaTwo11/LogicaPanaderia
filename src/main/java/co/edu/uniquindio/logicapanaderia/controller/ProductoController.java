@@ -1,7 +1,9 @@
 package co.edu.uniquindio.logicapanaderia.controller;
 
 import co.edu.uniquindio.logicapanaderia.model.Producto;
+import co.edu.uniquindio.logicapanaderia.repository.ProductoRepository;
 import co.edu.uniquindio.logicapanaderia.service.ProductoService;
+import co.edu.uniquindio.logicapanaderia.service.StreamingService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -10,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.util.List;
@@ -19,8 +22,9 @@ import java.util.List;
 @CrossOrigin(origins = "http://localhost:4200")
 public class ProductoController {
 
-    @Autowired
-    private ProductoService productoService;
+    @Autowired private ProductoService productoService;
+    @Autowired private ProductoRepository repo;
+    @Autowired private StreamingService streamingService;
 
     @GetMapping
     public List<Producto> listarProductos() {
@@ -97,5 +101,22 @@ public class ProductoController {
         return ResponseEntity.ok()
                 .contentType(mediaType)
                 .body(img);
+    }
+
+    @GetMapping("/count")
+    public long countAll() {
+        return repo.count();
+    }
+
+    @GetMapping("/stream")
+    public SseEmitter stream() {
+        return streamingService.createEmitter("producto");
+    }
+
+    @PostMapping
+    public Producto create(@RequestBody Producto p) {
+        Producto saved = repo.save(p);
+        streamingService.publishProduct(saved);
+        return saved;
     }
 }

@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -29,44 +30,91 @@ public class PedidoService {
     private final RepartidorRepository repartidorRepo;
     private final ProductoRepository productoRepo;
     private final ReporteService reporteService;
+    private final StreamingService streamingService;
 
     @Autowired
-    public PedidoService(PedidoRepository pedidoRepo,
-                         ClienteRepository clienteRepo,
-                         RepartidorRepository repartidorRepo,
-                         ProductoRepository productoRepo,
-                         ReporteService reporteService) {
+    public PedidoService(
+            PedidoRepository pedidoRepo,
+            ClienteRepository clienteRepo,
+            RepartidorRepository repartidorRepo,
+            ProductoRepository productoRepo,
+            ReporteService reporteService,
+            StreamingService streamingService
+    ) {
         this.pedidoRepo = pedidoRepo;
         this.clienteRepo = clienteRepo;
         this.repartidorRepo = repartidorRepo;
         this.productoRepo = productoRepo;
         this.reporteService = reporteService;
+        this.streamingService = streamingService;
     }
 
     /**
-     * Crea un pedido a partir de DTO o entidad.
+     * Mapea un PedidoDTO a la entidad Pedido completa.
+     */
+    public Pedido mapToEntity(PedidoDTO dto) {
+        Pedido p = new Pedido();
+        if (dto.getId() != null) p.setId(dto.getId());
+        p.setFecha(dto.getFecha());
+        p.setEstado(EstadoPedido.desdeValor(dto.getEstado()));
+        p.setDireccionEntrega(dto.getDireccionEntrega());
+        p.setMetodoPago(dto.getMetodoPago());
+        p.setNotas(dto.getNotas());
+        if (dto.getClienteId() != null) {
+            Cliente c = new Cliente(); c.setId(dto.getClienteId().intValue()); p.setCliente(c);
+        }
+        if (dto.getRepartidorId() != null) {
+            Repartidor r = new Repartidor(); r.setId(dto.getRepartidorId().intValue()); p.setRepartidor(r);
+        }
+        if (dto.getProductos() != null) {
+            p.setProductos(
+                    dto.getProductos().stream()
+                            .map(ppdto -> {
+                                PedidoProducto pp = new PedidoProducto();
+                                pp.setProductoId(ppdto.getProductoId());
+                                pp.setNombre(ppdto.getNombre());
+                                pp.setCantidad(ppdto.getCantidad());
+                                pp.setPrecioUnitario(ppdto.getPrecioUnitario());
+                                pp.setSubtotal(ppdto.getSubtotal());
+                                pp.setPedido(p);
+                                return pp;
+                            })
+                            .collect(Collectors.toList())
+            );
+        }
+        return p;
+    }
+
+    /**
+     * Crea un pedido a partir de DTO y notifica SSE.
      */
     public PedidoDTO crearPedidoDesdeDTO(PedidoDTO dto) {
-        Pedido pedido = convertirAPedido(dto);
-        return procesarYGuardarPedido(pedido);
+        Pedido pedido = mapToEntity(dto);
+        PedidoDTO result = procesarYGuardarPedido(pedido);
+        // Publicar evento SSE
+        streamingService.publishOrder(pedidoRepo.getReferenceById(result.getId()));
+        return result;
     }
 
     public PedidoDTO crearPedido(Pedido pedido) {
-        return procesarYGuardarPedido(pedido);
+        PedidoDTO result = procesarYGuardarPedido(pedido);
+        streamingService.publishOrder(pedidoRepo.getReferenceById(result.getId()));
+        return result;
     }
 
     /**
-     * Actualiza un pedido existente a partir de DTO.
+     * Actualiza un pedido existente a partir de DTO y notifica SSE.
      */
     public PedidoDTO actualizarPedidoDesdeDTO(PedidoDTO dto) {
         Long id = dto.getId();
         if (id == null || pedidoRepo.findById(id).isEmpty()) {
             throw new IllegalArgumentException("No se encontró el pedido con ID: " + id);
         }
-        // Convertir DTO a entidad con mismo ID
-        Pedido pedido = convertirAPedido(dto);
+        Pedido pedido = mapToEntity(dto);
         pedido.setId(id);
-        return procesarYGuardarPedido(pedido);
+        PedidoDTO result = procesarYGuardarPedido(pedido);
+        streamingService.publishOrder(pedidoRepo.getReferenceById(id));
+        return result;
     }
 
     private PedidoDTO procesarYGuardarPedido(Pedido pedido) {

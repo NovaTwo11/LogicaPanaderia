@@ -1,12 +1,18 @@
 package co.edu.uniquindio.logicapanaderia.controller;
 
 import co.edu.uniquindio.logicapanaderia.dto.PedidoDTO;
+import co.edu.uniquindio.logicapanaderia.model.Pedido;
+import co.edu.uniquindio.logicapanaderia.repository.PedidoRepository;
 import co.edu.uniquindio.logicapanaderia.service.PedidoService;
+import co.edu.uniquindio.logicapanaderia.service.StreamingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -16,8 +22,9 @@ import java.util.Optional;
 @CrossOrigin(origins = "http://localhost:4200")
 public class PedidoController {
 
-    @Autowired
-    private PedidoService pedidoService;
+    @Autowired private PedidoService pedidoService;
+    @Autowired private PedidoRepository repo;
+    @Autowired private StreamingService streamingService;
 
     @GetMapping
     public ResponseEntity<List<PedidoDTO>> obtenerPedidos() {
@@ -35,51 +42,69 @@ public class PedidoController {
     @PostMapping
     public ResponseEntity<PedidoDTO> crearPedido(@RequestBody PedidoDTO pedidoDTO) {
         try {
-            PedidoDTO nuevoPedido = pedidoService.crearPedidoDesdeDTO(pedidoDTO); // ✅ cambio aquí
-            return ResponseEntity.ok(nuevoPedido);
+            PedidoDTO nuevoPedido = pedidoService.crearPedidoDesdeDTO(pedidoDTO);
+            streamingService.publishOrder(
+                    pedidoService.mapToEntity(nuevoPedido)
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(nuevoPedido);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    // src/main/java/co/edu/uniquindio/logicapanaderia/controller/PedidoController.java
     @PutMapping("/{id}")
     public ResponseEntity<PedidoDTO> actualizarPedido(
             @PathVariable Long id,
             @RequestBody PedidoDTO pedidoDTO
     ) {
-        // 1) Asegurarnos de que body.id coincide con path id (o sea null en body → path id)
         if (pedidoDTO.getId() != null && !pedidoDTO.getId().equals(id)) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(null);
+            return ResponseEntity.badRequest().build();
         }
         pedidoDTO.setId(id);
-
         try {
-            // 2) Llamada al service
             PedidoDTO actualizado = pedidoService.actualizarPedidoDesdeDTO(pedidoDTO);
             return ResponseEntity.ok(actualizado);
         } catch (NoSuchElementException ex) {
-            // Cuando el service no encuentra el pedido
             return ResponseEntity.notFound().build();
         } catch (IllegalArgumentException | IllegalStateException ex) {
-            // Validaciones de negocio (stock, estado no modificable…)
-            return ResponseEntity
-                    .badRequest()
-                    .body(null);
+            return ResponseEntity.badRequest().build();
         }
     }
-
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Boolean> eliminarPedido(@PathVariable Long id) {
+    public ResponseEntity<Void> eliminarPedido(@PathVariable Long id) {
         try {
             pedidoService.eliminarPedido(id);
-            return ResponseEntity.ok(true);
+            return ResponseEntity.noContent().build();
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(false);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
+    @GetMapping("/count/today")
+    public ResponseEntity<Long> countToday() {
+        LocalDate today = LocalDate.now();
+        long count = repo.countByFechaBetween(
+                today.atStartOfDay(),
+                today.plusDays(1).atStartOfDay()
+        );
+        return ResponseEntity.ok(count);
+    }
+
+    @GetMapping("/sum/monthly")
+    public ResponseEntity<Double> sumMonthlySales() {
+        YearMonth ym = YearMonth.now();
+        LocalDate start = ym.atDay(1);
+        LocalDate end = ym.plusMonths(1).atDay(1);
+        double total = repo.sumTotalByFechaBetween(
+                start.atStartOfDay(),
+                end.atStartOfDay()
+        );
+        return ResponseEntity.ok(total);
+    }
+
+    @GetMapping("/stream")
+    public SseEmitter stream() {
+        return streamingService.createEmitter("pedido");
+    }
 }
