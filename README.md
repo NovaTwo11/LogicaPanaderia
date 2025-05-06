@@ -45,10 +45,15 @@ mvn spring-boot:run
 src/main/java/co/edu/uniquindio/logicapanaderia.
 
 ├── controller        # Controladores REST
+
 ├── dto               # Clases DTO (PedidoDTO, PedidoProductoDTO, etc.)
+
 ├── entity            # Entidades JPA (Cliente, Producto, Pedido, Repartidor, Administrador)
+
 ├── repository        # Repositorios Spring Data JPA
+
 ├── service           # Lógica de negocio
+
 └── LogicapanaderiaApplication.java
 
 ## EndPoints de la Api
