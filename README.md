@@ -40,7 +40,8 @@ mvn spring-boot:run
 
 2. La API estará disponible en http://localhost:8080/api.
 
-## Estructura del proyecto
+## Estructura del proyecto:
+
 src/main/java/co/edu/uniquindio/logicapanaderia
 ├── controller        # Controladores REST
 ├── dto               # Clases DTO (PedidoDTO, PedidoProductoDTO, etc.)
