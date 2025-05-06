@@ -51,7 +51,8 @@ src/main/java/co/edu/uniquindio/logicapanaderia
 
 ## EndPoints de la Api
 
-1. Clientes
+1. Clientes:
+
 | Método | Ruta                 | Descripción               |
 | ------ | -------------------- | ------------------------- |
 | GET    | `/api/clientes`      | Listar todos los clientes |
@@ -60,7 +61,8 @@ src/main/java/co/edu/uniquindio/logicapanaderia
 | PUT    | `/api/clientes/{id}` | Actualizar cliente        |
 | DELETE | `/api/clientes/{id}` | Eliminar cliente          |
 
-2. Productos
+2. Productos:
+
 | Método | Ruta                  | Descripción                |
 | ------ | --------------------- | -------------------------- |
 | GET    | `/api/productos`      | Listar todos los productos |
@@ -69,7 +71,8 @@ src/main/java/co/edu/uniquindio/logicapanaderia
 | PUT    | `/api/productos/{id}` | Actualizar producto        |
 | DELETE | `/api/productos/{id}` | Eliminar producto          |
 
-3. Pedidos
+3. Pedidos:
+
 | Método | Ruta                | Descripción                        |
 | ------ | ------------------- | ---------------------------------- |
 | GET    | `/api/pedidos`      | Listar todos los pedidos           |
@@ -78,7 +81,8 @@ src/main/java/co/edu/uniquindio/logicapanaderia
 | PUT    | `/api/pedidos/{id}` | Actualizar pedido existente        |
 | DELETE | `/api/pedidos/{id}` | Cancelar / eliminar un pedido      |
 
-4. Repartidores
+4. Repartidores:
+
 | Método | Ruta                     | Descripción           |
 | ------ | ------------------------ | --------------------- |
 | GET    | `/api/repartidores`      | Listar repartidores   |
@@ -86,7 +90,8 @@ src/main/java/co/edu/uniquindio/logicapanaderia
 | PUT    | `/api/repartidores/{id}` | Actualizar repartidor |
 | DELETE | `/api/repartidores/{id}` | Eliminar repartidor   |
 
-5. Administradores
+5. Administradores:
+
 | Método | Ruta                        | Descripción              |
 | ------ | --------------------------- | ------------------------ |
 | GET    | `/api/administradores`      | Listar administradores   |
