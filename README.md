@@ -24,19 +24,19 @@ Antes de comenzar, asegúrate de tener instalado:
 
 ## Configuración
 En src/main/resources/application.properties o application.yml, define:
-  spring.datasource.url=jdbc:oracle:thin:@//{HOST}:{PUERTO}/{SERVICIO}  
-  spring.datasource.username=${DB_USER}
-  spring.datasource.password=${DB_PASSWORD}
-  spring.jpa.hibernate.ddl-auto=update
-  spring.jpa.show-sql=true
+- spring.datasource.url=jdbc:oracle:thin:@//{HOST}:{PUERTO}/{SERVICIO}  
+- spring.datasource.username=${DB_USER}
+- spring.datasource.password=${DB_PASSWORD}
+- spring.jpa.hibernate.ddl-auto=update
+- spring.jpa.show-sql=true
 O usando variables de entorno:
-  spring.datasource.username=${ORACLE_USER}
-  spring.datasource.password=${ORACLE_PASS}
+- spring.datasource.username=${ORACLE_USER}
+- spring.datasource.password=${ORACLE_PASS}
 
 ## Ejecución
 1. Para compilar y ejecutar el proyecto:
-  mvn clean install
-  mvn spring-boot:run
+mvn clean install
+mvn spring-boot:run
 
 2. La API estará disponible en http://localhost:8080/api.
 
@@ -105,4 +105,4 @@ Los DTOs se configuran en el paquete dto y se usan en los controladores para ent
 
 ## Testing
 Para ejecutar pruebas unitarias y de integración:
-  mvn test
+mvn test
