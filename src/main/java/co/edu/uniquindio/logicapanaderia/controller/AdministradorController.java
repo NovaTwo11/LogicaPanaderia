@@ -74,12 +74,16 @@ public class AdministradorController {
     public ResponseEntity<?> eliminarAdministrador(@PathVariable Long id) {
         try {
             administradorService.eliminarAdministrador(id);
-            return ResponseEntity.noContent().build(); // 204 No Content si todo sale bien
+            return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Administrador no encontrado con ID: " + id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Administrador no encontrado con ID: " + id);
         } catch (Exception e) {
+            // Imprime en consola/log el stacktrace
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error al eliminar el administrador");
+                    .body("Error al eliminar el administrador: " + e.getMessage());
         }
     }
+
 }

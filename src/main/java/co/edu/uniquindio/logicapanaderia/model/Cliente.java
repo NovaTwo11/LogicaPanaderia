@@ -26,7 +26,7 @@ public class Cliente {
     private String telefono;
     private String direccion;
     private LocalDate fechaRegistro;
-    private Double totalCompras;
+    private Double totalCompras = 0.0;
     private boolean activo;
 
     @OneToMany(mappedBy = "cliente", cascade = CascadeType.ALL, orphanRemoval = true)

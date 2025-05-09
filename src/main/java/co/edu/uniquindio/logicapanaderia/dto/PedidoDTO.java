@@ -1,5 +1,7 @@
 package co.edu.uniquindio.logicapanaderia.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -8,11 +10,15 @@ public class PedidoDTO {
     private Long id;
     private Long clienteId;
     private String clienteNombre;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private LocalDateTime fecha;
     private String estado;
     private List<PedidoProductoDTO> productos;
     private Long repartidorId;
     private String repartidorNombre;
+
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private double total;
     private String direccionEntrega;
     private String metodoPago;

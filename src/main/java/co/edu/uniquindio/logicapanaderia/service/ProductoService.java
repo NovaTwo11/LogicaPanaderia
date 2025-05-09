@@ -45,7 +45,7 @@ public class ProductoService {
         productoExistente.setPrecio(productoActualizado.getPrecio());
         productoExistente.setDescripcion(productoActualizado.getDescripcion());
         productoExistente.setStock(productoActualizado.getStock());
-        // Puedes agregar más campos que quieras actualizar...
+        productoExistente.setCategoria(productoActualizado.getCategoria());
 
         if (imagenFile != null && !imagenFile.isEmpty()) {
             productoExistente.setImagen(imagenFile.getBytes());

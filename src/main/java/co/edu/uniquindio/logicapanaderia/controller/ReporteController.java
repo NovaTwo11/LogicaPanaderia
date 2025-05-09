@@ -1,6 +1,5 @@
 package co.edu.uniquindio.logicapanaderia.controller;
 
-import co.edu.uniquindio.logicapanaderia.dto.ReporteDTO;
 import co.edu.uniquindio.logicapanaderia.dto.ReporteDetalleDTO;
 import co.edu.uniquindio.logicapanaderia.model.TipoReporte;
 import co.edu.uniquindio.logicapanaderia.service.ReporteService;
