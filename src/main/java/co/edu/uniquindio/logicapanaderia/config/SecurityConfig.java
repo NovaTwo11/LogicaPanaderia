@@ -1,8 +1,10 @@
 package co.edu.uniquindio.logicapanaderia.config;
 
+import co.edu.uniquindio.logicapanaderia.service.BitacoraService;
 import co.edu.uniquindio.logicapanaderia.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.*;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -12,8 +14,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.cors.*;
 
 import java.util.List;
@@ -25,6 +25,9 @@ public class SecurityConfig {
     @Autowired
     private CustomUserDetailsService userDetailsService;
 
+    @Autowired
+    private BitacoraService bitacoraService;
+
     @Bean
     public DaoAuthenticationProvider authProvider() {
         DaoAuthenticationProvider prov = new DaoAuthenticationProvider();
@@ -35,37 +38,40 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        // Usaremos explícitamente un repositorio de contexto en sesión
-        SecurityContextRepository secRepo = new HttpSessionSecurityContextRepository();
-
         http
-                .cors(cors -> {})            // usa tu CorsConfigurationSource
+                // 1) Habilitar CORS y deshabilitar CSRF (SPA + token/sesión en cabecera)
+                .cors(cors -> {})
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // 1) Configuramos repositorio de contexto para sesiones
-                .securityContext(ctx -> ctx
-                        .securityContextRepository(secRepo)
+                // 2) Sesiones: crear sólo si es necesario
+                .sessionManagement(sess ->
+                        sess.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 )
 
-                // 2) Política de sesión
-                .sessionManagement(sess -> sess
-                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
-                        .maximumSessions(1)
-                )
-
-                // 3) Proveedor de autenticación
+                // 3) Nuestro proveedor de autenticación (DAO + BCrypt)
                 .authenticationProvider(authProvider())
 
-                // 4) Rutas públicas y protegidas
+                // 4) No usar formLogin ni logout de Spring: los maneja tu AuthController
+                //    Sólo definimos autorización de rutas:
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/api/auth/logout").permitAll()
+                        // permitir que Angular llame a tu controlador de login/logout
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/auth/login",
+                                "/api/auth/logout"
+                        ).permitAll()
+
+                        // opcional: permitir que el navegador haga preflight OPTIONS
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // el resto requiere haber iniciado sesión
                         .anyRequest().authenticated()
                 );
 
         return http.build();
     }
 
-    @Bean public BCryptPasswordEncoder passwordEncoder() {
+    @Bean
+    public BCryptPasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
@@ -79,7 +85,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
         cfg.setAllowedOrigins(List.of("http://localhost:4200"));
-        cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
         cfg.setAllowCredentials(true);
         UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();

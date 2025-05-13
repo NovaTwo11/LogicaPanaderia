@@ -50,10 +50,11 @@ public class ClienteController {
     }
 
     @PostMapping
-    public Cliente create(@RequestBody Cliente c) {
-        Cliente saved = repo.save(c);
+    public ResponseEntity<Cliente> create(@RequestBody Cliente c) {
+        Cliente saved = clienteService.crearCliente(c);
         streamingService.publishClient(saved);
-        return saved;
+        return ResponseEntity.ok(saved);
     }
+
 
 }

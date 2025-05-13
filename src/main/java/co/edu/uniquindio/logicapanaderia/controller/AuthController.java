@@ -3,6 +3,8 @@ package co.edu.uniquindio.logicapanaderia.controller;
 import co.edu.uniquindio.logicapanaderia.model.LoginRequest;
 import co.edu.uniquindio.logicapanaderia.model.Administrador;
 import co.edu.uniquindio.logicapanaderia.repository.AdministradorRepository;
+import co.edu.uniquindio.logicapanaderia.service.BitacoraService;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,9 @@ public class AuthController {
     @Autowired
     private AdministradorRepository adminRepo;
 
+    @Autowired
+    private BitacoraService bitacoraService;
+
     @PostMapping("/login")
     public ResponseEntity<?> login(
             @RequestBody LoginRequest req,
@@ -32,35 +37,41 @@ public class AuthController {
             HttpServletResponse response
     ) {
         try {
-            // 1) Autenticamos
+            // 1) Autenticación (aquí Spring validará el flag 'enabled' internamente)
             UsernamePasswordAuthenticationToken authToken =
                     new UsernamePasswordAuthenticationToken(req.getEmail(), req.getContrasena());
             Authentication auth = authManager.authenticate(authToken);
 
-            // 2) Guardamos en el contexto de seguridad
+            // 2) Guardar en SecurityContext y crear sesión
             SecurityContextHolder.getContext().setAuthentication(auth);
-
-            // 3) Creamos sesión y cookie (Set-Cookie enviado)
             request.getSession(true).setMaxInactiveInterval(30 * 60);
+            new HttpSessionSecurityContextRepository()
+                    .saveContext(SecurityContextHolder.getContext(), request, response);
 
-            // 4) ¡Forzamos el guardado del SecurityContext en la sesión!
-            HttpSessionSecurityContextRepository repo = new HttpSessionSecurityContextRepository();
-            repo.saveContext(SecurityContextHolder.getContext(), request, response);
+            // 3) Recuperar Administrador de BD
+            Administrador usuario = adminRepo.findByEmail(auth.getName())
+                    .orElseThrow(() -> new IllegalStateException("Usuario no encontrado"));
 
-            // 5) Recuperamos la entidad Administrador y limpiamos la contraseña
-            Optional<Administrador> opt = adminRepo.findByEmail(auth.getName());
-            if (opt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Usuario autenticado no encontrado en BD");
-            }
-            Administrador usuario = opt.get();
+            // 4) Limpiar contraseña antes de devolver
             usuario.setContrasena(null);
 
+            // 5) Registrar LOGIN en bitácora
+            String detalleLogin = String.format(
+                    "{\"nombre\":\"%s\",\"apellido\":\"%s\",\"rol\":\"%s\"}",
+                    usuario.getNombre(), usuario.getApellido(), usuario.getRol()
+            );
+            bitacoraService.registrarEvento(usuario.getId(), "LOGIN", detalleLogin);
+
+            // 6) Devolver el Administrador al frontend
             return ResponseEntity.ok(usuario);
 
         } catch (BadCredentialsException ex) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body("Credenciales inválidas");
+        } catch (DisabledException ex) {
+            // opcional: mensaje específico si la cuenta está deshabilitada en BD
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("Cuenta deshabilitada");
         } catch (Exception ex) {
             ex.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -73,10 +84,29 @@ public class AuthController {
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        // Invalida la sesión
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        if (auth != null) {
+            // 1) Registrar LOGOUT en bitácora
+            Optional<Administrador> opt = adminRepo.findByEmail(auth.getName());
+            if (opt.isPresent()) {
+                Administrador admin = opt.get();
+                String detalleLogout = String.format(
+                        "{\"nombre\":\"%s\",\"apellido\":\"%s\",\"rol\":\"%s\"}",
+                        admin.getNombre(), admin.getApellido(), admin.getRol()
+                );
+                bitacoraService.registrarEvento(admin.getId(), "LOGOUT", detalleLogout);
+            }
+        }
+
+        // 2) Invalidar sesión y borrar la cookie
         request.getSession().invalidate();
-        // Borra la cookie de sesión
-        response.addCookie(new jakarta.servlet.http.Cookie("JSESSIONID", null));
+        Cookie cookie = new Cookie("JSESSIONID", null);
+        cookie.setMaxAge(0);
+        cookie.setPath("/");
+        response.addCookie(cookie);
+
+        // 3) Limpiar SecurityContext
         SecurityContextHolder.clearContext();
         return ResponseEntity.ok().build();
     }
